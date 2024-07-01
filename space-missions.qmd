@@ -28,3 +28,9 @@ plot(textTable(as.data.frame(org_data), row.names=FALSE))
 ```
 
 ![Launches by organisation](launches-by-org.png){width="600"}
+
+```{r}
+ggplot(status_counts_df, aes(Status, Count, fill=Status)) + geom_bar(stat="identity") + labs(title = "Number of active and retired rockets")
+```
+
+![Active vs retired rockets](active-retired.png){width="600"}

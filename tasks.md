@@ -42,7 +42,6 @@ Consider removing columns containing junk data.
 Renamed unnamed ID column to `Mission_ID`
 Cleaned Dates using custom parse function (see above)
 
-
 ## Descriptive Statistics
 
 # Number of Launches per Company
