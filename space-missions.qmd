@@ -4,33 +4,12 @@ format: html
 editor: visual
 ---
 
-```{r}
-org_data <- org_summary %>%
-     mutate(`Number of launches` = cut(`Total Launches`, 
-                             breaks = c(1, 2, 5, 9, 19, 29, 39, 49, 99, 149, 199, 249, 299, Inf), 
-                             labels = c("1 launch",
-                                        "2-5 launches",
-                                        "6-9 launches",
-                                        "10-19 launches", 
-                                        "20-29 launches", 
-                                        "30-39 launches", 
-                                        "40-49 launches",
-                                        "50-99 launches", 
-                                        "100-149 launches", 
-                                        "150-199 launches", 
-                                        "200-249 launches",
-                                        "249-299 launches",
-                                        "299+ launches"),
-                             right = FALSE)) %>%
-     group_by(`Number of launches`) %>%
-     summarise(Organisations = paste(Organisation, collapse = ", "))
-plot(textTable(as.data.frame(org_data), row.names=FALSE))
-```
-
-![Launches by organisation](launches-by-org.png){width="600"}
+![Launches by organisation](launches-by-org.png)
 
 ```{r}
 ggplot(status_counts_df, aes(Status, Count, fill=Status)) + geom_bar(stat="identity") + labs(title = "Number of active and retired rockets")
 ```
 
 ![Active vs retired rockets](active-retired.png){width="600"}
+
+![Counts of mission status](mission-status.png){width="600"}

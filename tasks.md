@@ -47,15 +47,19 @@ Cleaned Dates using custom parse function (see above)
 # Number of Launches per Company
 
 Create a chart that shows the number of space mission launches by organisation.
+binned them and used a table - also tried a lollipop plot 
 
 # Number of Active versus Retired Rockets
 
 How many rockets are active compared to those that are decomissioned? 
+bar chart
 
 # Distribution of Mission Status
 
 How many missions were successful?
 How many missions failed?
+2 bars - successes and stacked failures
+Facet wrap to represent different orders of magnitude (potentially misleading now but easier to read than log scale)
 
 # How Expensive are the Launches? 
 
