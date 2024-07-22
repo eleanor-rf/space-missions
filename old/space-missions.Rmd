@@ -14,7 +14,7 @@ price_data <- df %>%
       Price <= 1000 ~ "500-1,000",
       Price > 1000 ~ "1,000+",
     )
-) %>%
+  ) %>%
   filter(!is.na(bin)) %>%
   mutate(bin = factor(bin, levels = c("0 - 100", "100-200", "200-500", "500-1,000", "1,000+")))
 
@@ -24,12 +24,12 @@ ggplot(price_data, aes(x = bin)) +
   geom_histogram(
     stat = "count",
     color = "black",
-    linewidth=0.3,
+    linewidth = 0.3,
     fill = "lightskyblue1",
-    width=1,
-    ) +
+    width = 1,
+  ) +
   ggtitle("Mission prices") +
-  labs(x="Price in millions of USD", y="Count") +
+  labs(x = "Price in millions of USD", y = "Count") +
   theme_ipsum()
 ```
 Wrangle the Country Names
@@ -44,13 +44,13 @@ You'll need to use a 3 letter country code for each country. You might have to c
 * Gran Canaria should be `USA`
 
 ```{r}
-#download countries geojson
-tmp_geojson <- tempfile(fileext=".geojson")
+# download countries geojson
+tmp_geojson <- tempfile(fileext = ".geojson")
 download.file(
   "https://raw.githubusercontent.com/datasets/geo-countries/cd9e0635901eac20294a57ee3b3ce0684d5e3f1a/data/countries.geojson",
   tmp_geojson
-  )
-#read contents
+)
+# read contents
 library(sf)
 countries_sf <- read_sf(tmp_geojson)
 ```
@@ -64,34 +64,35 @@ pattern <- ".*,\\s*(.*)"
 countries <- str_match(locations, pattern)[, 2]
 subset_countries <- sample(countries, 500)
 
-country_mappings <- c("Russia" = "RUS",
-                      "New Mexico" = "USA",
-                      "Yellow Sea" = "CHN",
-                      "Shahrud Missile Test Site" = "IRN",
-                      "Pacific Missile Range Facility" = "USA",
-                      "Barents Sea" = "RUS",
-                      "Gran Canaria" = "USA")
+country_mappings <- c(
+  "Russia" = "RUS",
+  "New Mexico" = "USA",
+  "Yellow Sea" = "CHN",
+  "Shahrud Missile Test Site" = "IRN",
+  "Pacific Missile Range Facility" = "USA",
+  "Barents Sea" = "RUS",
+  "Gran Canaria" = "USA"
+)
 
 get_iso3_code <- function(country) {
-    if (country %in% names(country_mappings)) {
-      return(country_mappings[[country]])
-    } else if (grepl("Pacific Ocean", country, ignore.case = TRUE)) {
-      return(NA)
-    } else {
-      iso3_code <- countrycode(country, "country.name", "iso3c")
-      #dynamically update country_mappings to run code faster
-      country_mappings <<- c(country_mappings, setNames(iso3_code, country))
-      return(countrycode(country, "country.name", "iso3c"))
-    }
+  if (country %in% names(country_mappings)) {
+    return(country_mappings[[country]])
+  } else if (grepl("Pacific Ocean", country, ignore.case = TRUE)) {
+    return(NA)
+  } else {
+    iso3_code <- countrycode(country, "country.name", "iso3c")
+    # dynamically update country_mappings to run code faster
+    country_mappings <<- c(country_mappings, setNames(iso3_code, country))
+    return(countrycode(country, "country.name", "iso3c"))
+  }
 }
 
 iso3_codes <- lapply(countries, get_iso3_code)
 print(iso3_codes)
-
 ```
 
 ```{r}
-#add iso3 codes to dataframe
+# add iso3 codes to dataframe
 df$iso3_code <- iso3_codes
 ```
 
@@ -110,10 +111,9 @@ glimpse(countries_sf)
 ```
 
 ```{r}
-#plot chloropleth
 library(ggplot2)
 ggplot(countries_sf) +
-  geom_sf(aes(fill = total_successes), linewidth=0.01, alpha=0.9) +
+  geom_sf(aes(fill = total_successes), linewidth = 0.01, alpha = 0.9) +
   theme_classic() +
   scale_fill_viridis_c(
     trans = "log", breaks = c(1, 5, 10, 100, 500, 1000),
@@ -128,5 +128,6 @@ ggplot(countries_sf) +
   ) +
   theme(legend.position = "bottom") +
   labs(
-    title = "Successful space missions by country")
+    title = "Successful space missions by country"
+  )
 ```

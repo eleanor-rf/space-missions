@@ -1,0 +1,32 @@
+---
+title: "Analysis of space missions data (SQL)"
+output: html_document
+date: "2024-07-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r import}
+library(RSQLite)
+conn <- dbConnect(RSQLite::SQLite(), "data/spacemissions.sqlite")
+dbGetQuery(conn,"PRAGMA table_info(spacemissions)")
+```
+
+```{r launches_by_company}
+dbExecute(conn, "DROP TABLE IF EXISTS organisation_counts")
+dbExecute(conn, "
+  CREATE TABLE organisation_counts (
+    organisation VARCHAR(255),
+    organisation_count INT
+  );
+")
+dbExecute(conn, "
+  INSERT INTO organisation_counts (Organisation, organisation_count)
+  SELECT Organisation, COUNT(*) AS organisation_count
+  FROM spacemissions
+  GROUP BY Organisation;
+")
+dbGetQuery(conn, "SELECT * FROM organisation_counts")
+```
