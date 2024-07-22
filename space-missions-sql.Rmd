@@ -8,13 +8,22 @@ date: "2024-07-22"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r import}
+```{r packages}
+library(dplyr)
 library(RSQLite)
+library(ggplot2)
+```
+
+```{r import}
 conn <- dbConnect(RSQLite::SQLite(), "data/spacemissions.sqlite")
+dbExecute(conn, "UPDATE spacemissions SET Organisation = REPLACE(Organisation, 'Arm??e de l''Air', 'Armée de l''Air') WHERE Organisation LIKE '%Arm??e de l''Air%'")
+```
+
+```{r column_names}
 dbGetQuery(conn,"PRAGMA table_info(spacemissions)")
 ```
 
-```{r launches_by_company}
+```{r launches_by_organisation}
 dbExecute(conn, "DROP TABLE IF EXISTS organisation_counts")
 dbExecute(conn, "
   CREATE TABLE organisation_counts (
@@ -23,10 +32,61 @@ dbExecute(conn, "
   );
 ")
 dbExecute(conn, "
-  INSERT INTO organisation_counts (Organisation, organisation_count)
+  INSERT INTO organisation_counts (organisation, organisation_count)
   SELECT Organisation, COUNT(*) AS organisation_count
   FROM spacemissions
   GROUP BY Organisation;
 ")
-dbGetQuery(conn, "SELECT * FROM organisation_counts")
+```
+
+```{r organisation_counts_lollipop}
+organisation_counts <- dbGetQuery(conn, "SELECT * FROM organisation_counts ORDER BY organisation_count ASC")
+
+organisation_counts <- organisation_counts %>%
+  mutate(organisation = factor(organisation, levels = organisation))
+
+ggplot(organisation_counts, aes(x=organisation, y=organisation_count)) +
+  geom_segment( aes(x=organisation, xend=organisation, y=0, yend=organisation_count), color="skyblue") +
+  geom_point( color="blue", size=4, alpha=0.6) +
+  theme_light() +
+  coord_flip() +
+  labs(
+    x = "Organisation",
+    y = "Number of missions",
+    title = "Missions per organisation"
+  ) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.y = element_blank(),
+  )
+```
+
+```{r status_counts}
+dbExecute(conn, "DROP TABLE IF EXISTS status_counts")
+dbExecute(conn, "
+  CREATE TABLE status_counts (
+    status VARCHAR(255),
+    count INT
+  );
+")
+dbExecute(conn, "
+  INSERT INTO status_counts (status, count)
+  SELECT Rocket_Status, COUNT(*) AS count
+  FROM spacemissions
+  GROUP BY Rocket_Status;
+")
+
+status_counts <- dbGetQuery(conn, "SELECT * FROM status_counts ORDER BY count ASC")
+
+status_counts <- status_counts %>%
+  mutate(status = recode(status,
+                                "StatusActive" = "Active",
+                                "StatusRetired" = "Retired"))
+
+ggplot(status_counts, aes(x=status, y=count)) + 
+  geom_bar(stat="identity", fill=rgb(0.1,0.4,0.5)) +
+  labs(x="Rocket status",
+       y="Number of rockets",
+       title="Rocket status")
 ```
