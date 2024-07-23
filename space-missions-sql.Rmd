@@ -4,6 +4,8 @@ output: html_document
 date: "2024-07-22"
 ---
 
+# Setup, load packages, import data
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -12,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(RSQLite)
 library(ggplot2)
+library(stringr)
 ```
 
 ```{r import}
@@ -26,6 +29,10 @@ dbGetQuery(conn,"PRAGMA table_info(spacemissions)")
 ```{r get_dataframe}
 df <- dbGetQuery(conn, "SELECT * FROM spacemissions")
 ```
+
+# Bar charts & histograms
+
+## Launches per organisation
 
 ```{r launches_by_organisation}
 dbExecute(conn, "DROP TABLE IF EXISTS organisation_counts")
@@ -66,6 +73,8 @@ ggplot(organisation_counts, aes(x=organisation, y=organisation_count)) +
   )
 ```
 
+## Rocket statuses
+
 ```{r status_counts}
 dbExecute(conn, "DROP TABLE IF EXISTS status_counts")
 dbExecute(conn, "
@@ -95,6 +104,8 @@ ggplot(status_counts, aes(x=status, y=count)) +
        title="Rocket status")
 ```
 
+## Mission costs histogram
+
 ```{r mission_costs}
 mission_costs <- dbGetQuery(conn, "SELECT Price FROM spacemissions")
 
@@ -113,6 +124,10 @@ ggplot(mission_costs, aes(x=Price)) +
 
 ```
 
+# Choropleth maps
+
+## Setup countries shapefile
+
 ```{r get_shapefile}
 library(countrycode)
 library(stringr)
@@ -128,6 +143,8 @@ download.file(
 library(sf)
 countries_sf <- read_sf(tmp_geojson)
 ```
+
+## Fetch ISO3 codes for each location in dataframe
 
 ```{r get_iso3_codes}
 locations <- df$Location
@@ -162,16 +179,15 @@ iso3_codes <- lapply(locations, get_iso3_code)
 df$ISO_A3 <- iso3_codes
 ```
 
+## Successes choropleth
+
 ```{r}
-# merge countries shapefile with number of successful launches
 success_total <- df %>%
   filter(Mission_Status == "Success") %>%
   group_by(ISO_A3) %>%
   summarise(total_successes = n())
 
 success_shapefile <- merge(countries_sf, success_total, by = "ISO_A3", all.x = TRUE)
-
-head(success_shapefile)
 
 ```
 
@@ -194,6 +210,40 @@ ggplot(success_shapefile) +
   theme(legend.position = "bottom") +
   labs(
     title = "Successful space missions by country"
+  )
+
+```
+
+## Failure choropleth
+
+```{r}
+failure_total <- df %>%
+  filter(str_detect(Mission_Status, "Failure")) %>%
+  group_by(ISO_A3) %>%
+  summarise(total_failures = n())
+
+failure_shapefile <- merge(countries_sf, failure_total, by = "ISO_A3", all.x = TRUE)
+
+```
+
+```{r}
+ggplot(failure_shapefile) +
+  geom_sf(aes(fill = total_failures), linewidth = 0.1, alpha = 0.9) +
+  theme_classic() +
+  scale_fill_viridis_c(
+    trans = "log", breaks = c(1, 5, 10, 50, 100, 150),
+    name = "Number of failed mission launches",
+    guide = guide_legend(
+      keyheight = unit(3, units = "mm"),
+      keywidth = unit(12, units = "mm"),
+      label.position = "bottom",
+      title.position = "top",
+      nrow = 1
+    )
+  ) +
+  theme(legend.position = "bottom") +
+  labs(
+    title = "Failed space missions by country"
   )
 
 ```
