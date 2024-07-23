@@ -23,6 +23,10 @@ dbExecute(conn, "UPDATE spacemissions SET Organisation = REPLACE(Organisation, '
 dbGetQuery(conn,"PRAGMA table_info(spacemissions)")
 ```
 
+```{r get_dataframe}
+df <- dbGetQuery(conn, "SELECT * FROM spacemissions")
+```
+
 ```{r launches_by_organisation}
 dbExecute(conn, "DROP TABLE IF EXISTS organisation_counts")
 dbExecute(conn, "
@@ -89,4 +93,107 @@ ggplot(status_counts, aes(x=status, y=count)) +
   labs(x="Rocket status",
        y="Number of rockets",
        title="Rocket status")
+```
+
+```{r mission_costs}
+mission_costs <- dbGetQuery(conn, "SELECT Price FROM spacemissions")
+
+tidy_costs <- function(costs_vector) {
+  costs_vector$Price <- as.numeric(gsub(",", "", costs_vector$Price))
+  costs_vector <- na.omit(costs_vector)
+  return(costs_vector)
+}
+
+mission_costs <- tidy_costs(mission_costs)
+
+ggplot(mission_costs, aes(x=Price)) +
+  geom_histogram(binwidth=100) +
+  labs(x="Cost (millions of USD)",
+       y="Count")
+
+```
+
+```{r get_shapefile}
+library(countrycode)
+library(stringr)
+
+# download countries geojson
+tmp_geojson <- tempfile(fileext = ".geojson")
+download.file(
+  "https://raw.githubusercontent.com/datasets/geo-countries/cd9e0635901eac20294a57ee3b3ce0684d5e3f1a/data/countries.geojson",
+  tmp_geojson
+)
+
+# read contents
+library(sf)
+countries_sf <- read_sf(tmp_geojson)
+```
+
+```{r get_iso3_codes}
+locations <- df$Location
+pattern <- ".*,\\s*(.*)"
+locations <- str_match(locations, pattern)[, 2]
+
+country_mappings <- c(
+  "Russia" = "RUS",
+  "New Mexico" = "USA",
+  "Yellow Sea" = "CHN",
+  "Shahrud Missile Test Site" = "IRN",
+  "Pacific Missile Range Facility" = "USA",
+  "Barents Sea" = "RUS",
+  "Gran Canaria" = "USA"
+)
+
+get_iso3_code <- function(country) {
+  if (country %in% names(country_mappings)) {
+    return(country_mappings[[country]])
+  } else if (grepl("Pacific Ocean", country, ignore.case = TRUE)) {
+    return(NA)
+  } else {
+    iso3_code <- countrycode(country, "country.name", "iso3c")
+    # dynamically update country_mappings to run code faster
+    country_mappings <<- c(country_mappings, setNames(iso3_code, country))
+    return(countrycode(country, "country.name", "iso3c"))
+  }
+}
+
+iso3_codes <- lapply(locations, get_iso3_code)
+
+df$ISO_A3 <- iso3_codes
+```
+
+```{r}
+# merge countries shapefile with number of successful launches
+success_total <- df %>%
+  filter(Mission_Status == "Success") %>%
+  group_by(ISO_A3) %>%
+  summarise(total_successes = n())
+
+success_shapefile <- merge(countries_sf, success_total, by = "ISO_A3", all.x = TRUE)
+
+head(success_shapefile)
+
+```
+
+```{r}
+#plot choropleth
+ggplot(success_shapefile) +
+  geom_sf(aes(fill = total_successes), linewidth = 0.1, alpha = 0.9) +
+  theme_classic() +
+  scale_fill_viridis_c(
+    trans = "log", breaks = c(1, 5, 10, 100, 500, 1000),
+    name = "Number of successful mission launches",
+    guide = guide_legend(
+      keyheight = unit(3, units = "mm"),
+      keywidth = unit(12, units = "mm"),
+      label.position = "bottom",
+      title.position = "top",
+      nrow = 1
+    )
+  ) +
+  theme(legend.position = "bottom") +
+  labs(
+    title = "Successful space missions by country"
+  )
+
 ```
