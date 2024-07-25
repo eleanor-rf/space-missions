@@ -86,10 +86,7 @@ You can use the iso3166 package to convert the country names to Alpha3 format.
 
 # Use a Choropleth Map to Show the Number of Failures by Country
 
-
-
-
-# Create a Plotly Sunburst Chart of the countries, organisations, and mission status. 
+# Create a Plotly Sunburst Chart of the countries, organisations, and mission status.
 
 # Analyse the Total Amount of Money Spent by Organisation on Space Missions
 

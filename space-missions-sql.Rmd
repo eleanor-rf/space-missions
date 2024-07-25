@@ -15,6 +15,7 @@ library(dplyr)
 library(RSQLite)
 library(ggplot2)
 library(stringr)
+library(plotly)
 ```
 
 ```{r import}
@@ -245,5 +246,89 @@ ggplot(failure_shapefile) +
   labs(
     title = "Failed space missions by country"
   )
+
+```
+
+```{r}
+# plotly sunburst
+# country -> organisation -> mission status
+
+get_values <- function(parents, labels) {
+  if (length(parents) == 0 || parents == "") {
+    return(sum(df$ISO_A3 == labels))
+  } else if (grepl("-", parents)) {
+    return(sum(df$ISO_A3 == sub("-.*", "", parents) & df$Organisation == sub(".*-", "", parents) & df$Mission_Status == labels))
+  } else {
+    return(sum(df$Organisation == labels & df$ISO_A3 == parents))
+  }
+}
+
+get_country_data <- function(country) {
+    organisations <- unique(subset(df, ISO_A3 == country, select = Organisation))$Organisation
+    organisations <- paste0(country, "-", organisations)
+    
+    status_codes <- c("success", "fail", "partialfail", "prelaunchfail")
+    
+    organisation_codes <- expand.grid(organisation = organisations, item = status_codes)
+    
+    organisation_codes <- paste0(organisation_codes$organisation, "-", organisation_codes$item)
+    
+  temp_df <- data.frame(
+    ids=c(country, organisations, organisation_codes)
+  )
+  
+  temp_df$labels <- sub(".*-", "", temp_df$ids)
+  
+  temp_df <- temp_df %>%
+        mutate(
+            labels = case_when(
+                grepl("prelaunchfail", ids, ignore.case = TRUE) ~ "Prelaunch Failure",
+                grepl("success", ids, ignore.case = TRUE) ~ "Success",
+                grepl("partialfail", ids, ignore.case = TRUE) ~ "Partial Failure",
+                grepl("fail", ids, ignore.case = TRUE) ~ "Failure",
+                TRUE ~ labels
+            )
+        )
+  
+temp_df$parents <- ifelse(
+    str_count(temp_df$ids, "-") == 0,
+    "",
+    ifelse(
+        str_count(temp_df$ids, "-") == 1,
+        sub("-.*", "", temp_df$ids),
+        sub("-(?!.*-).*", "", temp_df$ids, perl=TRUE)
+    )
+)
+
+temp_df$values <- mapply(get_values, temp_df$parents, temp_df$labels)
+
+
+return(temp_df)
+}
+
+
+valid_countries <- success_total$ISO_A3[!is.na(success_total$ISO_A3)]
+
+sunburst_df <- do.call(rbind, lapply(valid_countries, get_country_data))
+
+sunburst_df$values <- as.numeric(sunburst_df$values)
+
+sunburst_df <- sunburst_df[sunburst_df$values != 0, ]
+
+```
+
+```{r plot_sunburst}
+fig <- plot_ly()
+
+fig <- fig %>% add_trace(
+  type='sunburst',
+  ids=sunburst_df$ids,
+  labels=sunburst_df$labels,
+  parents=sunburst_df$parents,
+  values=sunburst_df$values,
+  branchvalues='total',
+  insidetextorientation='radial'
+)
+fig
 
 ```
