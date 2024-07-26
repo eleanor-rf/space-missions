@@ -16,6 +16,7 @@ library(RSQLite)
 library(ggplot2)
 library(stringr)
 library(plotly)
+library(forcats)
 ```
 
 ```{r import}
@@ -249,9 +250,9 @@ ggplot(failure_shapefile) +
 
 ```
 
-```{r}
-# plotly sunburst
-# country -> organisation -> mission status
+## Plotly sunburst chart
+
+```{r make_sunburst_df}
 
 get_values <- function(parents, labels) {
   if (length(parents) == 0 || parents == "") {
@@ -330,5 +331,59 @@ fig <- fig %>% add_trace(
   insidetextorientation='radial'
 )
 fig
+
+```
+
+## Analysing spends
+
+```{r total_price_by_organisation}
+
+df$Price <- as.numeric(gsub(",", "", df$Price))
+
+total_price_by_organisation <- df %>%
+  group_by(Organisation) %>%
+  summarise(Total_Price = sum(Price, na.rm = TRUE)) %>%
+  filter(Total_Price!=0) %>%
+  arrange(Total_Price)
+
+total_price_by_organisation <- total_price_by_organisation %>%
+  mutate(Organisation = factor(Organisation, levels = Organisation))
+
+ggplot(total_price_by_organisation, aes(x=Organisation, y=Total_Price)) +
+  geom_segment( aes(x=Organisation, xend=Organisation, y=0, yend=Total_Price), color="skyblue") +
+  geom_point( color="blue", size=4, alpha=0.6) +
+  theme_light() +
+  coord_flip() +
+  labs(
+    x = "Organisation",
+    y = "Total spend (millions of USD)",
+    title = "Total expenditure on missions per organisation"
+  ) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.y = element_blank(),
+  )
+
+```
+
+```{r mean_price_by_organisation}
+mean_price_by_organisation <- df %>%
+  group_by(Organisation) %>%
+  summarise(Mean_Price = mean(Price, na.rm = TRUE)) %>%
+  arrange(Mean_Price)
+
+mean_price_by_organisation <- na.omit(mean_price_by_organisation)
+
+mean_price_by_organisation %>% 
+  mutate(Organisation = fct_reorder(Organisation, Mean_Price)) %>%
+  ggplot(aes(x=Organisation, y=Mean_Price)) + 
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(
+    title = "Mean cost of mission per organisation",
+    x = "Organisation",
+    y = "Mean cost per mission (millions of USD)"
+  )
 
 ```
